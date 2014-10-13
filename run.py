@@ -1,6 +1,7 @@
 # -*- coding: utf-8 -*-
 
-import urllib
+import os
+import json
 import tornado.auth
 import tornado.httpserver
 import tornado.ioloop
@@ -18,7 +19,8 @@ define('debug', default=False, help='run in debug mode')
 class Application(tornado.web.Application):
     def __init__(self):
         handlers = [
-            (r"/translate", TranslateHandler)
+            (r"/translate", TranslateHandler),
+            (r"/hsk", HskHandler)
         ]
         settings = dict(
             debug=options.debug
@@ -52,6 +54,30 @@ class TranslateHandler(tornado.web.RequestHandler):
         self.set_header("Content-Type", 'audio/mpeg')
         self.set_header("Content-Disposition", 'filename="music.mp3"')
         self.write(resp.body)
+
+
+class HskHandler(tornado.web.RequestHandler):
+    def get_hsk(self, level):
+        root = os.path.dirname(__file__)
+        relative_path = "files/level{}.txt".format(level)
+        path = os.path.join(root, relative_path)
+        hsk = []
+        with open(path) as f:
+            for l in f:
+                val = l.rstrip().split('\t')
+                word = {
+                    'traditional': val[0],
+                    'simplified': val[1],
+                    'vocal': val[2],
+                    'pinyin': val[3],
+                    'translation': val[4].split('; ')
+                }
+                hsk.append(word)
+        return json.dumps(hsk)
+
+    def get(self):
+        res = self.get_hsk(1)
+        self.write(res)
 
 
 def main():
