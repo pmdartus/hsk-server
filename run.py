@@ -20,7 +20,7 @@ class Application(tornado.web.Application):
     def __init__(self):
         handlers = [
             (r"/translate", TranslateHandler),
-            (r"/hsk", HskHandler)
+            (r"/hsk/([1-6])", HskHandler)
         ]
         settings = dict(
             debug=options.debug
@@ -73,11 +73,13 @@ class HskHandler(tornado.web.RequestHandler):
                     'translation': val[4].split('; ')
                 }
                 hsk.append(word)
-        return json.dumps(hsk)
+        return hsk
 
-    def get(self):
-        res = self.get_hsk(1)
-        self.write(res)
+    def get(self, level):
+        hsk = []
+        for i in xrange(1, int(level) + 1):
+            hsk.extend(self.get_hsk(i))
+        self.write(json.dumps(hsk))
 
 
 def main():
