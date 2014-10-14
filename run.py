@@ -13,6 +13,7 @@ from tornado.httpclient import AsyncHTTPClient
 from tornado.options import define, options
 
 define('port', default=3000, help='run on the given port', type=int)
+define('tmp', default='tmp', help='directory to store the downloaded data')
 define('debug', default=False, help='run in debug mode')
 
 
@@ -48,12 +49,21 @@ class TranslateHandler(tornado.web.RequestHandler):
     @gen.coroutine
     def get(self):
         query = self.get_argument('q')
-        http_client = AsyncHTTPClient()
-        req = TranslateApiRequest(query)
-        resp = yield http_client.fetch(req)
-        self.set_header("Content-Type", 'audio/mpeg')
-        self.set_header("Content-Disposition", 'filename="music.mp3"')
-        self.write(resp.body)
+        root = os.path.dirname(__file__)
+        relative_path = "%s/%s.mp3" % (options.tmp, query)
+        path = os.path.join(root, relative_path)
+        if not os.path.exists(path):
+            http_client = AsyncHTTPClient()
+            req = TranslateApiRequest(query)
+            resp = yield http_client.fetch(req)
+            if not os.path.exists(os.path.dirname(relative_path)):
+                os.makedirs(os.path.dirname(relative_path))
+            with open(relative_path, 'w+') as f:
+                f.write(resp.body)
+        with open(relative_path) as f:
+            self.set_header("Content-Type", 'audio/mpeg')
+            self.set_header("Content-Disposition", 'filename="music.mp3"')
+            self.write(f.read())
 
 
 class HskHandler(tornado.web.RequestHandler):
